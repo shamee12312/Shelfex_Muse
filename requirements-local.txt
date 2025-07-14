@@ -1,0 +1,12 @@
+# Core Flask application dependencies
+flask>=2.3.0
+werkzeug>=2.3.0
+
+# Google Gemini AI integration
+google-genai>=0.6.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Production server (optional)
+gunicorn>=21.0.0

@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block title %}AI Image Editor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="display-6 mb-2">
+                    <i class="fas fa-magic text-primary me-3"></i>Image Creation & Editing
+                </h1>
+                <p class="text-muted small">powered by Google DeepMind Gemini 2.0 Flash</p>
+            </div>
+
+            <!-- Error Messages -->
+            <div id="errorContainer" class="d-none">
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <span id="errorMessage"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            </div>
+
+            <!-- Main Application Area -->
+            <div id="mainApp">
+                <!-- Image Upload Section (shown initially) -->
+                <div id="uploadSection" class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-upload me-2"></i>Upload Image (Optional)
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="imageUploadArea" class="border border-2 border-dashed rounded p-4 text-center">
+                                    <div id="dropZone" class="d-flex flex-column align-items-center justify-content-center" style="min-height: 120px;">
+                                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                        <p class="mb-2">Drop your image here or click to browse</p>
+                                        <p class="small text-muted">Supports PNG, JPG, JPEG, GIF, WebP (max 10MB)</p>
+                                        <input type="file" id="fileInput" class="d-none" accept="image/*">
+                                        <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+                                            Choose File
+                                        </button>
+                                    </div>
+                                    <div id="imagePreview" class="d-none">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span id="fileName" class="fw-medium"></span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage()">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        <img id="previewImage" class="img-fluid rounded" style="max-height: 200px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-pencil-alt me-2"></i>Instructions
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="promptForm">
+                                    <div class="mb-3">
+                                        <label for="promptInput" class="form-label">
+                                            <span id="promptLabel">Describe the image you want to generate</span>
+                                        </label>
+                                        <textarea id="promptInput" class="form-control" rows="4" 
+                                                  placeholder="Example: A 3D rendered image of a pig with wings and a top hat flying over a futuristic city..."
+                                                  required></textarea>
+                                    </div>
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary" id="generateBtn">
+                                            <i class="fas fa-magic me-2"></i>
+                                            <span id="generateBtnText">Generate Image</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingSection" class="d-none text-center py-5">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
+                                <div>
+                                    <div class="spinner-border text-primary mb-3" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-image fa-2x text-muted mb-3"></i>
+                                        <p class="text-muted">Processing your request...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result Section -->
+                <div id="resultSection" class="d-none">
+                    <!-- Generated Image Display -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-check-circle text-success me-2"></i>Generated Image
+                            </h5>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadImage()">
+                                    <i class="fas fa-download me-1"></i>Download
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleHistory()">
+                                    <i class="fas fa-history me-1"></i>History
+                                </button>
+                                <button type="button" class="btn btn-outline-warning btn-sm" onclick="resetApp()">
+                                    <i class="fas fa-undo me-1"></i>Start Over
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <img id="generatedImage" class="img-fluid rounded shadow" style="max-width: 640px; max-height: 480px;">
+                            </div>
+                            <div id="imageDescription" class="d-none">
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">Description</h6>
+                                    <p id="descriptionText" class="mb-0"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Conversation History -->
+                    <div id="historySection" class="d-none">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-comments me-2"></i>Conversation History
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="historyContainer"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Continue Editing -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-edit me-2"></i>Continue Editing
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="editForm">
+                                <div class="mb-3">
+                                    <label for="editPrompt" class="form-label">Describe how you want to edit this image</label>
+                                    <textarea id="editPrompt" class="form-control" rows="3" 
+                                              placeholder="Example: Make the background blue and add a rainbow..."
+                                              required></textarea>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-magic me-2"></i>Edit Image
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Global state
+let currentImage = null;
+let generatedImage = null;
+let conversationHistory = [];
+let isEditing = false;
+
+// Initialize the app
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // File input change
+    document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+    
+    // Form submissions
+    document.getElementById('promptForm').addEventListener('submit', handlePromptSubmit);
+    document.getElementById('editForm').addEventListener('submit', handleEditSubmit);
+    
+    // Drag and drop
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', handleDragOver);
+    dropZone.addEventListener('drop', handleDrop);
+    dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
+}
+
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) {
+        processSelectedFile(file);
+    }
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('bg-light');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-light');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        processSelectedFile(files[0]);
+    }
+}
+
+function processSelectedFile(file) {
+    if (!file.type.startsWith('image/')) {
+        showError('Please select a valid image file.');
+        return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) {
+        showError('File size must be less than 10MB.');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        currentImage = e.target.result;
+        showImagePreview(file.name, e.target.result);
+        updatePromptUI(true);
+    };
+    reader.readAsDataURL(file);
+}
+
+function showImagePreview(fileName, imageSrc) {
+    document.getElementById('fileName').textContent = fileName;
+    document.getElementById('previewImage').src = imageSrc;
+    document.getElementById('dropZone').classList.add('d-none');
+    document.getElementById('imagePreview').classList.remove('d-none');
+}
+
+function removeImage() {
+    currentImage = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('dropZone').classList.remove('d-none');
+    document.getElementById('imagePreview').classList.add('d-none');
+    updatePromptUI(false);
+}
+
+function updatePromptUI(hasImage) {
+    const promptLabel = document.getElementById('promptLabel');
+    const promptInput = document.getElementById('promptInput');
+    const generateBtnText = document.getElementById('generateBtnText');
+    
+    if (hasImage) {
+        promptLabel.textContent = 'Describe how you want to edit this image';
+        promptInput.placeholder = 'Example: Make the background blue and add a rainbow...';
+        generateBtnText.textContent = 'Edit Image';
+        isEditing = true;
+    } else {
+        promptLabel.textContent = 'Describe the image you want to generate';
+        promptInput.placeholder = 'Example: A 3D rendered image of a pig with wings and a top hat flying over a futuristic city...';
+        generateBtnText.textContent = 'Generate Image';
+        isEditing = false;
+    }
+}
+
+async function handlePromptSubmit(e) {
+    e.preventDefault();
+    const prompt = document.getElementById('promptInput').value.trim();
+    if (!prompt) return;
+    
+    await processPrompt(prompt, generatedImage || currentImage);
+    document.getElementById('promptInput').value = '';
+}
+
+async function handleEditSubmit(e) {
+    e.preventDefault();
+    const prompt = document.getElementById('editPrompt').value.trim();
+    if (!prompt) return;
+    
+    await processPrompt(prompt, generatedImage);
+    document.getElementById('editPrompt').value = '';
+}
+
+async function processPrompt(prompt, imageToEdit) {
+    try {
+        showLoading();
+        
+        // Add user message to history
+        const userMessage = {
+            role: 'user',
+            parts: [
+                { text: prompt },
+                ...(imageToEdit ? [{ image: imageToEdit }] : [])
+            ]
+        };
+        
+        const requestData = {
+            prompt: prompt,
+            image: imageToEdit,
+            history: conversationHistory
+        };
+        
+        const response = await fetch('/api/process-image', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to process image');
+        }
+        
+        if (data.success && data.image) {
+            generatedImage = data.image;
+            
+            // Add to conversation history
+            conversationHistory.push(userMessage);
+            
+            const aiResponse = {
+                role: 'model',
+                parts: [
+                    ...(data.description ? [{ text: data.description }] : []),
+                    { image: data.image }
+                ]
+            };
+            conversationHistory.push(aiResponse);
+            
+            showResult(data.image, data.description);
+        } else {
+            throw new Error('No image returned from API');
+        }
+        
+    } catch (error) {
+        console.error('Error processing prompt:', error);
+        showError(error.message || 'An error occurred while processing your request');
+        hideLoading();
+    }
+}
+
+function showLoading() {
+    document.getElementById('uploadSection').classList.add('d-none');
+    document.getElementById('resultSection').classList.add('d-none');
+    document.getElementById('loadingSection').classList.remove('d-none');
+}
+
+function hideLoading() {
+    document.getElementById('loadingSection').classList.add('d-none');
+}
+
+function showResult(imageUrl, description) {
+    hideLoading();
+    
+    document.getElementById('generatedImage').src = imageUrl;
+    
+    if (description) {
+        document.getElementById('descriptionText').textContent = description;
+        document.getElementById('imageDescription').classList.remove('d-none');
+    } else {
+        document.getElementById('imageDescription').classList.add('d-none');
+    }
+    
+    document.getElementById('uploadSection').classList.add('d-none');
+    document.getElementById('resultSection').classList.remove('d-none');
+    
+    updateHistoryDisplay();
+}
+
+function downloadImage() {
+    if (generatedImage) {
+        const link = document.createElement('a');
+        link.href = generatedImage;
+        link.download = `gemini-image-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+
+function toggleHistory() {
+    const historySection = document.getElementById('historySection');
+    historySection.classList.toggle('d-none');
+}
+
+function updateHistoryDisplay() {
+    const container = document.getElementById('historyContainer');
+    container.innerHTML = '';
+    
+    conversationHistory.forEach((item, index) => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `mb-3 p-3 rounded ${item.role === 'user' ? 'bg-light' : 'bg-primary bg-opacity-10'}`;
+        
+        const header = document.createElement('div');
+        header.className = 'fw-bold mb-2';
+        header.textContent = item.role === 'user' ? 'You' : 'Gemini';
+        messageDiv.appendChild(header);
+        
+        item.parts.forEach(part => {
+            if (part.text) {
+                const textDiv = document.createElement('div');
+                textDiv.className = 'mb-2';
+                textDiv.textContent = part.text;
+                messageDiv.appendChild(textDiv);
+            }
+            
+            if (part.image) {
+                const imgDiv = document.createElement('div');
+                imgDiv.className = 'text-center';
+                const img = document.createElement('img');
+                img.src = part.image;
+                img.className = 'img-fluid rounded';
+                img.style.maxWidth = '200px';
+                imgDiv.appendChild(img);
+                messageDiv.appendChild(imgDiv);
+            }
+        });
+        
+        container.appendChild(messageDiv);
+    });
+}
+
+function resetApp() {
+    if (confirm('Are you sure you want to start over? This will clear your conversation history.')) {
+        currentImage = null;
+        generatedImage = null;
+        conversationHistory = [];
+        isEditing = false;
+        
+        // Reset UI
+        document.getElementById('resultSection').classList.add('d-none');
+        document.getElementById('uploadSection').classList.remove('d-none');
+        document.getElementById('promptInput').value = '';
+        document.getElementById('editPrompt').value = '';
+        
+        removeImage();
+        updatePromptUI(false);
+    }
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorContainer').classList.remove('d-none');
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        document.getElementById('errorContainer').classList.add('d-none');
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Result - AI Image Editor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-check-circle text-success me-2"></i>Image Editing Complete
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <strong>Editing Instructions:</strong> {{ prompt }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-image me-2"></i>Original Image
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ url_for('uploaded_file', filename=original_image) }}" 
+                     alt="Original Image" 
+                     class="img-fluid rounded shadow-sm"
+                     style="max-height: 400px; width: auto;">
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('uploaded_file', filename=original_image) }}" 
+                   class="btn btn-outline-secondary btn-sm" 
+                   download>
+                    <i class="fas fa-download me-1"></i>Download Original
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-magic me-2"></i>Edited Image
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ url_for('result_file', filename=edited_image) }}" 
+                     alt="Edited Image" 
+                     class="img-fluid rounded shadow-sm"
+                     style="max-height: 400px; width: auto;">
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('result_file', filename=edited_image) }}" 
+                   class="btn btn-primary btn-sm" 
+                   download>
+                    <i class="fas fa-download me-1"></i>Download Edited
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <a href="{{ url_for('index') }}" class="btn btn-success btn-lg">
+            <i class="fas fa-plus me-2"></i>Edit Another Image
+        </a>
+    </div>
+</div>
+{% endblock %}
